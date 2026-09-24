@@ -4,6 +4,12 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import {
+  validateEmail,
+  validateFullName,
+  validateNisn,
+  validatePassword,
+} from '@/lib/validation'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -11,6 +17,12 @@ export default function RegisterPage() {
   const [nisn, setNisn] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<{
+    fullName?: string
+    nisn?: string
+    email?: string
+    password?: string
+  }>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -18,17 +30,34 @@ export default function RegisterPage() {
   // ponytail: direct client auth call -> server actions when cookie session sync required
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setLoading(true)
     setError(null)
     setSuccess(null)
 
+    const nameErr = validateFullName(fullName)
+    const nisnErr = validateNisn(nisn)
+    const emailErr = validateEmail(email)
+    const passErr = validatePassword(password)
+
+    if (nameErr || nisnErr || emailErr || passErr) {
+      setFieldErrors({
+        fullName: nameErr || undefined,
+        nisn: nisnErr || undefined,
+        email: emailErr || undefined,
+        password: passErr || undefined,
+      })
+      return
+    }
+
+    setFieldErrors({})
+    setLoading(true)
+
     const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
+      email: email.trim(),
       password,
       options: {
         data: {
-          full_name: fullName,
-          nisn,
+          full_name: fullName.trim(),
+          nisn: nisn.trim(),
           role: 'Siswa Reguler',
         },
       },
@@ -103,7 +132,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-3">
+            <form onSubmit={handleSubmit} className="space-y-3" noValidate>
               <div>
                 <label
                   htmlFor="full_name"
@@ -115,11 +144,23 @@ export default function RegisterPage() {
                   id="full_name"
                   type="text"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => {
+                    setFullName(e.target.value)
+                    if (fieldErrors.fullName) setFieldErrors((prev) => ({ ...prev, fullName: undefined }))
+                  }}
                   placeholder="Nama Lengkap Siswa"
                   required
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all"
+                  className={`w-full px-3 py-2 rounded-xl bg-slate-50 border text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:bg-white transition-all ${
+                    fieldErrors.fullName
+                      ? 'border-rose-400 focus:ring-rose-400 bg-rose-50/30'
+                      : 'border-slate-200 focus:ring-sky-500'
+                  }`}
                 />
+                {fieldErrors.fullName && (
+                  <p className="mt-1 text-[11px] text-rose-600 font-medium">
+                    {fieldErrors.fullName}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -127,17 +168,32 @@ export default function RegisterPage() {
                   htmlFor="nisn"
                   className="block text-xs font-bold text-slate-700 mb-1"
                 >
-                  NISN
+                  NISN (10 Digit Angka)
                 </label>
                 <input
                   id="nisn"
                   type="text"
+                  inputMode="numeric"
+                  maxLength={10}
                   value={nisn}
-                  onChange={(e) => setNisn(e.target.value)}
-                  placeholder="Nomor Induk Siswa Nasional"
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                    setNisn(val)
+                    if (fieldErrors.nisn) setFieldErrors((prev) => ({ ...prev, nisn: undefined }))
+                  }}
+                  placeholder="Contoh: 0012345678"
                   required
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all"
+                  className={`w-full px-3 py-2 rounded-xl bg-slate-50 border text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:bg-white transition-all ${
+                    fieldErrors.nisn
+                      ? 'border-rose-400 focus:ring-rose-400 bg-rose-50/30'
+                      : 'border-slate-200 focus:ring-sky-500'
+                  }`}
                 />
+                {fieldErrors.nisn && (
+                  <p className="mt-1 text-[11px] text-rose-600 font-medium">
+                    {fieldErrors.nisn}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -151,11 +207,23 @@ export default function RegisterPage() {
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }))
+                  }}
                   placeholder="siswa@smkn1kepanjen.sch.id"
                   required
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all"
+                  className={`w-full px-3 py-2 rounded-xl bg-slate-50 border text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:bg-white transition-all ${
+                    fieldErrors.email
+                      ? 'border-rose-400 focus:ring-rose-400 bg-rose-50/30'
+                      : 'border-slate-200 focus:ring-sky-500'
+                  }`}
                 />
+                {fieldErrors.email && (
+                  <p className="mt-1 text-[11px] text-rose-600 font-medium">
+                    {fieldErrors.email}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -163,18 +231,29 @@ export default function RegisterPage() {
                   htmlFor="password"
                   className="block text-xs font-bold text-slate-700 mb-1"
                 >
-                  Password
+                  Password (Min. 8 karakter, huruf & angka)
                 </label>
                 <input
                   id="password"
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimal 6 karakter"
-                  minLength={6}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }))
+                  }}
+                  placeholder="Minimal 8 karakter"
                   required
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all"
+                  className={`w-full px-3 py-2 rounded-xl bg-slate-50 border text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:bg-white transition-all ${
+                    fieldErrors.password
+                      ? 'border-rose-400 focus:ring-rose-400 bg-rose-50/30'
+                      : 'border-slate-200 focus:ring-sky-500'
+                  }`}
                 />
+                {fieldErrors.password && (
+                  <p className="mt-1 text-[11px] text-rose-600 font-medium">
+                    {fieldErrors.password}
+                  </p>
+                )}
               </div>
 
               <button

@@ -4,22 +4,34 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { validateEmail } from '@/lib/validation'
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // ponytail: direct client auth call -> server actions when cookie session sync required
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setLoading(true)
     setError(null)
 
+    const emailErr = validateEmail(email)
+    const passErr = !password ? 'Password wajib diisi' : undefined
+
+    if (emailErr || passErr) {
+      setFieldErrors({ email: emailErr || undefined, password: passErr })
+      return
+    }
+
+    setFieldErrors({})
+    setLoading(true)
+
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim(),
       password,
     })
 
@@ -77,7 +89,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-3.5">
+            <form onSubmit={handleSubmit} className="space-y-3.5" noValidate>
               <div>
                 <label
                   htmlFor="email"
@@ -89,11 +101,23 @@ export default function LoginPage() {
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }))
+                  }}
                   placeholder="siswa@smkn1kepanjen.sch.id"
                   required
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all"
+                  className={`w-full px-3 py-2 rounded-xl bg-slate-50 border text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:bg-white transition-all ${
+                    fieldErrors.email
+                      ? 'border-rose-400 focus:ring-rose-400 bg-rose-50/30'
+                      : 'border-slate-200 focus:ring-sky-500'
+                  }`}
                 />
+                {fieldErrors.email && (
+                  <p className="mt-1 text-[11px] text-rose-600 font-medium">
+                    {fieldErrors.email}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -107,11 +131,23 @@ export default function LoginPage() {
                   id="password"
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }))
+                  }}
                   placeholder="••••••••"
                   required
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all"
+                  className={`w-full px-3 py-2 rounded-xl bg-slate-50 border text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:bg-white transition-all ${
+                    fieldErrors.password
+                      ? 'border-rose-400 focus:ring-rose-400 bg-rose-50/30'
+                      : 'border-slate-200 focus:ring-sky-500'
+                  }`}
                 />
+                {fieldErrors.password && (
+                  <p className="mt-1 text-[11px] text-rose-600 font-medium">
+                    {fieldErrors.password}
+                  </p>
+                )}
               </div>
 
               <button
